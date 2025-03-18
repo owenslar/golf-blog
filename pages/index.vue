@@ -1,3 +1,9 @@
 <template>
-    Home Page
+    <div>
+        Home Page
+    </div>
 </template>
+
+<style scoped>
+   
+</style>
