@@ -58,11 +58,13 @@ const blogs = [{
     scores: [2, 4, 3, 5, 4, 3, 6, 5, 4],
     description: 'Played 9 at fink',
 }]
-    
+
+// GET BLOGS
 app.get('/api/blogs', (req, res) => {
     res.send(blogs);
 });
 
+// GET SPECIFIC BLOG
 app.get('/api/blogs/:id', (req, res) => {
     const id = req.params.id;
     const foundBlog = blogs.find((blog) => blog.id === parseInt(id));
@@ -73,17 +75,19 @@ app.get('/api/blogs/:id', (req, res) => {
     res.send(foundBlog); 
 });
 
+// CREATE A BLOG
 app.post('/api/blogs', authenticateToken, (req, res) => {
     const blogData = req.body;
     if (!blogData) {
         res.status(400).json({ error: 'Invalid data recieved' });
     }
     blogData.id = blogs.length + 1;
-    blogData.username = 'TESTING USERNAME';
+    blogData.username = req.userData.username;
     blogs.push(blogData);
     res.sendStatus(200);
 });
 
+// REFRESH AUTH TOKEN
 app.post('/api/token', (req, res) => {
     const refreshToken = req.body.token;
     if (refreshToken === null) {
@@ -101,12 +105,22 @@ app.post('/api/token', (req, res) => {
     });
 });
 
+// DELETE REFRESH TOKEN
 // MODIFY THIS ENDPOINT TO ACTUALLY DELETE THE REFRESH TOKEN FROM THE DB
 app.delete('/api/logout', (req, res) => {
-    refreshTokens = refreshTokens.filter(token => token !== req.body.token);
-    res.sendStatus(204);
-})
+    const authHeader = req.headers['authorization'];
 
+    const token = authHeader && authHeader.split(' ')[1];
+    if (!token) {
+        return res.sendStatus(401);
+    }
+    refreshTokens = refreshTokens.filter(t => t !== token);
+
+    res.sendStatus(204);
+});
+
+
+// REGISTER USER (returns new authtoken and refreshtoken)
 app.post('/api/register', (req, res) => {
     const userData = req.body;
     if (!userData) {
@@ -143,10 +157,10 @@ app.post('/api/register', (req, res) => {
 
 // TEMPORARY ENDPOINT FOR TESTING
 app.get('/api/test', authenticateToken, (req, res) => {
-    req.userData.message = "Logged in!";
-    res.json(req.userData);
+    res.json(refreshTokens);
 })
 
+// LOGIN USER (returns a new authtoken and refreshtoken)
 app.post('/api/login', (req, res) => {
     const reqUserData = req.body;
     
@@ -183,7 +197,7 @@ app.post('/api/login', (req, res) => {
 
 function generateAuthToken(userData) {
     // EDIT THE 15s TO SOMETHING BIGGER THIS IS JUST FOR TESTING
-    return jwt.sign(userData, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '30s' })
+    return jwt.sign(userData, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' })
 }
 
 function authenticateToken(req, res, next) {
