@@ -8,45 +8,17 @@
 </template>
 
 <script setup>
-    const blogs = [{ 
-        id: 1,
-        username: 'owenlarson',
-        name: 'Owen Larson',
-        course: 'Brown Deer Golf Club',
-        scores: [3, 4, 6, 5, 2, 4, 5, 3, 6, 7, 4, 3, 2, 3, 3, 4, 5, 4],
-        description: 'I had a good round today',
-        
-    },
-    {
-        id: 2,
-        username: 'owenlarson2',
-        name: 'Owen Larson',
-        course: 'Finkbine Golf Course',
-        scores: [2, 4, 3, 5, 4, 3, 6, 5, 4],
-        description: 'Played 9 at fink',
-    },
-    {
-        id: 3,
-        username: 'owenlarson3',
-        name: 'Owen Larson',
-        course: 'Finkbine Golf Course',
-        scores: [2, 4, 3, 5, 4, 3, 6, 5, 4],
-        description: 'Played 9 at fink',
-    },
-    {
-        id: 4,
-        username: 'owenlarson4',
-        name: 'Owen Larson',
-        course: 'Finkbine Golf Course',
-        scores: [2, 4, 3, 5, 4, 3, 6, 5, 4],
-        description: 'Played 9 at fink',
-    },
-    {
-        id: 5,
-        username: 'owenlarson5',
-        name: 'Owen Larson',
-        course: 'Finkbine Golf Course',
-        scores: [2, 4, 3, 5, 4, 3, 6, 5, 4],
-        description: 'Played 9 at fink',
-    }]
+    import axios from 'axios';
+
+    const blogs = ref([]);
+
+    onMounted(async () => {
+        try {
+            const response = await axios.get('/api/blogs');
+            blogs.value = response.data;
+        } catch (error) {
+            console.error('Failed to fetch message:', error);
+        }
+    });
+
 </script>

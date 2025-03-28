@@ -28,6 +28,9 @@
 </template>
 
 <script>
+
+    import axios from 'axios';
+
     export default {
         data() {
             return {
@@ -42,13 +45,19 @@
             }
         },
         methods: {
-            handleSubmit() {
+            async handleSubmit() {
                 if (this.formData.scores.includes(0)) {
                     window.alert("Please fill in all your scores");
                     return;
                 }
                 const jsonData = JSON.stringify(this.formData);
-                console.log(jsonData);
+                try {
+                    const response = await axios.post('/api/blogs', jsonData, {
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                } catch (error) {
+                    console.error('Failed to add blog:', error);
+                }
             },
             addItemToArray(index, inputValue) {
                 this.recievedData = inputValue;
@@ -61,7 +70,7 @@
                 if (number === 18) {
                     this.formData.scores = this.formData.scores.concat(Array(9).fill(0));
                 } else {
-                    this.formData.scores = this.formData.scores.slice(0, 10);
+                    this.formData.scores = this.formData.scores.slice(0, 9);
                 }
             }
         }
