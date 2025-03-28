@@ -50,6 +50,13 @@
                     window.alert("Please fill in all your scores");
                     return;
                 }
+                if (this.formData.name === '') {
+                    window.alert("Please enter a name");
+                    return;
+                }
+                if (this.formData.course === '') {
+                    window.alert("Please enter a golf course");
+                }
                 const jsonData = JSON.stringify(this.formData);
                 try {
                     const response = await axios.post('/api/blogs', jsonData, {
@@ -58,6 +65,7 @@
                 } catch (error) {
                     console.error('Failed to add blog:', error);
                 }
+                await navigateTo('/blogs');
             },
             addItemToArray(index, inputValue) {
                 this.recievedData = inputValue;

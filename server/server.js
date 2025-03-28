@@ -64,14 +64,12 @@ app.get('/api/blogs/:id', (req, res) => {
 
 app.post('/api/blogs', (req, res) => {
     const blogData = req.body;
-    console.log(blogData);
     if (!blogData) {
         res.status(400).json({ error: 'Invalid data recieved' });
     }
-    blogData.id = blogs.length;
+    blogData.id = blogs.length + 1;
     blogData.username = 'TESTING USERNAME';
     blogs.push(blogData);
-    console.log(blogData);
     res.sendStatus(200);
 });
     
