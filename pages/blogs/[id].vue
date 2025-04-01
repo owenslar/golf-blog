@@ -1,6 +1,6 @@
 <template>
-    <div>
-        <div v-if="blog" class="flex flex-col border card shadow-xl  m-2 p-6 bg-white border gorder-gray-200 rounded-lg shadow-sm">
+    <div class="overflow-x-auto">
+        <div v-if="blog" class="flex flex-col border card shadow-xl m-1 p-6 bg-white border-gray-200 rounded-lg shadow-sm ">
             <div class="flex flex-row">
                 <h1 class="mt-4 ml-4 mr-1 text-2xl font-bold">Round Logged By:</h1>
                 <div v-if="blog.name" class="mt-4 ml-4 mr-4 text-2xl">{{ blog.name }}</div>
@@ -20,9 +20,11 @@
                 <div v-else-if="blog.course === ''" class="m-4 text-2xl font-bold">N/A</div>
                 <div v-else class="m-4 text-2xl font-bold">loading course...</div>
             </div>
-            <div v-if="blog.scores"class="m-4">
+            <div v-if="blog.scores"class="mt-4 mb-4 ml-4 overflow-x-auto">
                 <p>Scorecard:</p>
-                <Scorecard :blog="blog"></Scorecard>
+                <div class="w-max">
+                    <Scorecard :blog="blog"></Scorecard>
+                </div>
             </div>
             <div class="m-4 text-2xl font-bold">Description:</div>
             <div v-if="blog.description" class="ml-4 mt-0 text-xl">{{ blog.description }}</div>
@@ -46,6 +48,10 @@
     const deleteBlog = async () => {
         try {
             const jwt = localStorage.getItem('authToken');
+            if (!jwt) {
+                window.alert("Please log in before deleting a blog");
+                return;
+            }
             const jwtPayload = JSON.parse(window.atob(jwt.split('.')[1]));
             const isExpired = Date.now() >= jwtPayload.exp * 1000;
             if (isExpired) {
