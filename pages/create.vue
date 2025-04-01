@@ -64,6 +64,10 @@
                 const jsonData = JSON.stringify(this.formData);
                 try {
                     const jwt = localStorage.getItem('authToken');
+                    if (!jwt) {
+                        window.alert('Please log in before creating a blog');
+                        return;
+                    }
                     const jwtPayload = JSON.parse(window.atob(jwt.split('.')[1]));
                     const isExpired = Date.now() >= jwtPayload.exp * 1000;
                     if (isExpired) {
