@@ -28,6 +28,8 @@
             <div v-if="blog.description" class="ml-4 mt-0 text-xl">{{ blog.description }}</div>
             <div v-else-if="blog.description === ''" class="ml-4 mt-0 text-xl">No Description</div>
             <div v-else class="ml-4 mt-0 text-xl">loading description...</div>
+            <br>
+            <button @click="deleteBlog" class="inline-flex items-center w-[68px] m-4 px-3 py-2 text-sm font-medium text-center text-white bg-red-700 rounded-lg hover:bg-red-800 focus-ring-4 focus:outline-none focus:ring-red-300">Delete</button>
         </div>
         <div v-else class="mt-8 mb-4 text-4xl font-bold text-center">Blog not found</div>
     </div>
@@ -40,6 +42,26 @@
     const { id } = useRoute().params;
 
     const blog = ref({});
+
+    const deleteBlog = async () => {
+        try {
+            const jwt = localStorage.getItem('authToken');
+            const jwtPayload = JSON.parse(window.atob(jwt.split('.')[1]));
+            const isExpired = Date.now() >= jwtPayload.exp * 1000;
+            if (isExpired) {
+                const tokenResponse = await axios.post('/api/token', { 'token': `${localStorage.getItem('refreshToken')}`});
+                localStorage.setItem('authToken', tokenResponse.data.authToken);
+            }
+            const response = await axios.delete(`/api/blogs/${id}`, {
+                headers: { 'authorization': `Bearer ${localStorage.getItem('authToken')}`}
+            });
+        } catch (error) {
+            console.error('Failed to delete blog: ', error);
+            window.alert(error.response.data.error);
+            return;
+        }
+        await navigateTo('/blogs');
+    }
 
     onMounted(async () => {
         try {

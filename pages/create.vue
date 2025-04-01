@@ -50,6 +50,10 @@
                     window.alert("Please fill in all your scores");
                     return;
                 }
+                if (this.formData.scores.some(number => number < 0)) {
+                    window.alert("Please enter valid scores");
+                    return;
+                }
                 if (this.formData.name === '') {
                     window.alert("Please enter a name");
                     return;
@@ -69,10 +73,12 @@
                     const response = await axios.post('/api/blogs', jsonData, {
                         headers: { 'Content-Type': 'application/json',
                                     'authorization': `Bearer ${localStorage.getItem('authToken')}`
-                         }
+                        }
                     });
                 } catch (error) {
                     console.error('Failed to add blog:', error);
+                    window.alert(error.response.data.error);
+                    return;
                 }
                 await navigateTo('/blogs');
             },

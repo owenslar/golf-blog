@@ -61,7 +61,7 @@ const blogs = [{
 
 // GET BLOGS
 app.get('/api/blogs', (req, res) => {
-    res.send(blogs);
+    return res.send(blogs);
 });
 
 // GET SPECIFIC BLOG
@@ -72,37 +72,39 @@ app.get('/api/blogs/:id', (req, res) => {
     if (!foundBlog) {
         return res.status(404).send({ message: 'Blog not found' });
     }
-    res.send(foundBlog); 
+    return res.send(foundBlog); 
 });
 
 // CREATE A BLOG
 app.post('/api/blogs', authenticateToken, (req, res) => {
     const blogData = req.body;
     if (!blogData) {
-        res.status(400).json({ error: 'Invalid data recieved' });
+        return res.status(400).json({ error: 'Invalid data recieved' });
     }
     blogData.id = blogs.length + 1;
     blogData.username = req.userData.username;
     blogs.push(blogData);
-    res.sendStatus(200);
+    return res.sendStatus(200);
 });
 
 // DELETE A BLOG
 // modify this to actually delete within the DB
-app.delete('/api/blogs', authenticateToken, (req, res) => {
-    const deleteId = parseInt(req.body.id);
+app.delete('/api/blogs/:id', authenticateToken, (req, res) => {
+    const deleteId = parseInt(req.params.id);
     const userData = req.userData;
     if (!deleteId) {
-        res.status(400).json({ error: 'No ID provided' });
+        return res.status(400).json({ error: 'No ID provided' });
     }
     const index = blogs.findIndex(obj => obj.id === deleteId);
     if (blogs[index].username !== userData.username) {
-        res.status(403).json({ error: 'This blog is not yours' });
+        return res.status(403).json({ error: 'This blog is not yours' });
     }
     if (index > -1) {
         blogs.splice(index, 1);
+    } else {
+        return res.send(404).json({ error: 'Blog not found' });
     }
-    res.sendStatus(200);
+    return res.sendStatus(200);
 })
 
 // REFRESH AUTH TOKEN
@@ -119,7 +121,7 @@ app.post('/api/token', (req, res) => {
             return res.sendStatus(403);
         }
         const authToken = generateAuthToken({ id: userData.id, username: userData.username, password: userData.password })
-        res.json({ authToken: authToken });
+        return res.json({ authToken: authToken });
     });
 });
 
@@ -132,23 +134,44 @@ app.delete('/api/logout', (req, res) => {
     if (!token) {
         return res.sendStatus(401);
     }
-    refreshTokens = refreshTokens.filter(t => t !== token);
+    try {
+        const userData = extractUserData(token);
+        if (userData === null) {
+            return res.sendStatus(200);
+        }
+    
+        refreshTokens = refreshTokens.filter(t => {
+            const extractedUser = extractUserData(t);
+            return extractedUser && extractedUser.username !== userData.username;
+        });
+    
+        return res.sendStatus(204);
 
-    res.sendStatus(204);
+    } catch (err) {
+        return res.sendStatus(403);
+    }
 });
+
+function extractUserData(refreshToken) {
+    try {
+        return jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
+    } catch (err) {
+        return null;
+    }
+}
 
 
 // REGISTER USER (returns new authtoken and refreshtoken)
 app.post('/api/register', (req, res) => {
     const userData = req.body;
     if (!userData) {
-        res.status(400).json({ error: 'Invalid data recieved' });
+        return res.status(400).json({ error: 'Invalid data recieved' });
     }
     if (!userData.username || userData.username === null || userData.username === '') {
-        res.status(400).json({ error: "Bad request, invalid username" });
+        return res.status(400).json({ error: "Bad request, invalid username" });
     }
     if (!userData.password || userData.password === null || userData.password === '') {
-        res.status(400).json({ error: "Bad request, invalid password" });
+        return res.status(400).json({ error: "Bad request, invalid password" });
     }
 
     // HERE YOU NEED TO CHECK IF THE USER ALREADY EXISTS BEFORE CREATING THEM, AND THE DB SHOULD GENERATE AN ID SOMEHOW
@@ -158,7 +181,7 @@ app.post('/api/register', (req, res) => {
     })
 
     if (containsUser) {
-        res.status(403).json({ error: "Already taken" });
+        return res.status(403).json({ error: "Already taken" });
     }
 
     userData.id = users.length + 1;
@@ -170,12 +193,12 @@ app.post('/api/register', (req, res) => {
     // THIS SHOULD BE REPLACED BY PUTTING THE REFRESH TOKEN IN THE DATABASE
     refreshTokens.push(refreshToken);
 
-    res.json({ authToken: authToken, refreshToken: refreshToken });
+    return res.json({ authToken: authToken, refreshToken: refreshToken });
 });
 
 // TEMPORARY ENDPOINT FOR TESTING
 app.get('/api/test', authenticateToken, (req, res) => {
-    res.json(refreshTokens);
+    return res.json(refreshTokens);
 })
 
 // LOGIN USER (returns a new authtoken and refreshtoken)
@@ -183,13 +206,13 @@ app.post('/api/login', (req, res) => {
     const reqUserData = req.body;
     
     if (!reqUserData) {
-        res.status(400).json({ error: 'Invalid data recieved' });
+        return res.status(400).json({ error: 'Invalid data recieved' });
     }
     if (!reqUserData.username || reqUserData.username === null || reqUserData.username === '') {
-        res.status(400).json({ error: "Bad request, invalid username" });
+        return res.status(400).json({ error: "Bad request, invalid username" });
     }
     if (!reqUserData.password || reqUserData.password === null || reqUserData.password === '') {
-        res.status(400).json({ error: "Bad request, invalid password" });
+        return res.status(400).json({ error: "Bad request, invalid password" });
     }
 
 
@@ -197,10 +220,10 @@ app.post('/api/login', (req, res) => {
     // ALSO FETCH THIS USER DATA FROM THE DATABASE TO USE FOR THE LINES BELOW (should have a username, password, and id)
     const user = users.find(user => user.username === reqUserData.username);
     if (!user) {
-        res.status(403).json({ error: "Unauthorized, user doesn't exist" });
+        return res.status(403).json({ error: "Unauthorized, user doesn't exist" });
     }
     if (user.password !== reqUserData.password) {
-        res.status(403).json({ error: "Unauthroized, incorrect password"});
+        return res.status(403).json({ error: "Unauthroized, incorrect password"});
     }
     const userData = user;
 
@@ -210,7 +233,7 @@ app.post('/api/login', (req, res) => {
     // THIS SHOULD BE REPLACED BY PUTTING THE REFRESH TOKEN IN THE DATABASE
     refreshTokens.push(refreshToken);
 
-    res.json({ authToken: authToken, refreshToken: refreshToken });
+    return res.json({ authToken: authToken, refreshToken: refreshToken });
 });
 
 function generateAuthToken(userData) {
