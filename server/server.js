@@ -87,6 +87,24 @@ app.post('/api/blogs', authenticateToken, (req, res) => {
     res.sendStatus(200);
 });
 
+// DELETE A BLOG
+// modify this to actually delete within the DB
+app.delete('/api/blogs', authenticateToken, (req, res) => {
+    const deleteId = parseInt(req.body.id);
+    const userData = req.userData;
+    if (!deleteId) {
+        res.status(400).json({ error: 'No ID provided' });
+    }
+    const index = blogs.findIndex(obj => obj.id === deleteId);
+    if (blogs[index].username !== userData.username) {
+        res.status(403).json({ error: 'This blog is not yours' });
+    }
+    if (index > -1) {
+        blogs.splice(index, 1);
+    }
+    res.sendStatus(200);
+})
+
 // REFRESH AUTH TOKEN
 app.post('/api/token', (req, res) => {
     const refreshToken = req.body.token;

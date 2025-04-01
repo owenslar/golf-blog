@@ -59,8 +59,17 @@
                 }
                 const jsonData = JSON.stringify(this.formData);
                 try {
+                    const jwt = localStorage.getItem('authToken');
+                    const jwtPayload = JSON.parse(window.atob(jwt.split('.')[1]));
+                    const isExpired = Date.now() >= jwtPayload.exp * 1000;
+                    if (isExpired) {
+                        const tokenResponse = await axios.post('/api/token', { 'token': `${localStorage.getItem('refreshToken')}`});
+                        localStorage.setItem('authToken', tokenResponse.data.authToken);
+                    }
                     const response = await axios.post('/api/blogs', jsonData, {
-                        headers: { 'Content-Type': 'application/json' }
+                        headers: { 'Content-Type': 'application/json',
+                                    'authorization': `Bearer ${localStorage.getItem('authToken')}`
+                         }
                     });
                 } catch (error) {
                     console.error('Failed to add blog:', error);

@@ -14,7 +14,11 @@
     const loggedIn = ref(false);
 
     const switchState = () => {
-        loggedIn.value = !loggedIn.value;
+        if (localStorage.getItem('refreshToken') == null) {
+            loggedIn.value = false;
+        } else {
+            loggedIn.value = true;
+        }
     }
 
     const login = async (username, password) => {
@@ -26,7 +30,7 @@
             localStorage.setItem('refreshToken', response.data.refreshToken);
         } catch (error) {
             console.error('Failed to login:', error);
-            window.alert(error);
+            window.alert(error.response.data.error);
             return;
         }
         switchState();
@@ -41,7 +45,7 @@
             localStorage.setItem('refreshToken', response.data.refreshToken);
         } catch (error) {
             console.error('Failed to register:', error);
-            window.alert(error);
+            window.alert(error.response.data.error);
             return;
         }
         switchState();
@@ -58,9 +62,13 @@
             localStorage.clear();
         } catch (error) {
             console.error('Failed to logout', error);
-            window.alert(error);
+            window.alert(error.response.data.error);
             return;
         }
         switchState();
     }
+
+    onMounted(() => {
+        switchState();
+    });
 </script>
