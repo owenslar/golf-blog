@@ -3,8 +3,9 @@ dotenv.config({ path: '../.env' });
 import express from 'express';
 import bodyParser from 'body-parser';
 import jwt from 'jsonwebtoken';
-import { DynamoDBClient, ListTablesCommand } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBDocumentClient, ScanCommand } from "@aws-sdk/lib-dynamodb";
+// import { v4 as uuidv4 } from 'uuid';
 
 const dynamoDBClient = new DynamoDBClient({
   region: 'us-west-2',
@@ -28,51 +29,43 @@ const users = [];
 
 let refreshTokens = [];
 
-const blogs = [{ 
-    id: 1,
-    username: 'testUser',
-    name: 'My Name',
-    course: 'Brown Deer Golf Club',
-    scores: [3, 4, 6, 5, 2, 4, 5, 3, 6, 7, 4, 3, 2, 3, 3, 4, 5, 4],
-    description: 'I had a good round today',
-    
-},
-{
-    id: 2,
-    username: 'owenlarson2',
-    name: 'Owen Larson',
-    course: 'Finkbine Golf Course',
-    scores: [2, 4, 3, 5, 4, 3, 6, 5, 4],
-    description: 'Played 9 at fink',
-},
-{
-    id: 3,
-    username: 'owenlarson3',
-    name: 'Owen Larson',
-    course: 'Finkbine Golf Course',
-    scores: [2, 4, 3, 5, 4, 3, 6, 5, 4],
-    description: 'Played 9 at fink',
-},
-{
-    id: 4,
-    username: 'owenlarson4',
-    name: 'Owen Larson',
-    course: 'Finkbine Golf Course',
-    scores: [2, 4, 3, 5, 4, 3, 6, 5, 4],
-    description: 'Played 9 at fink',
-},
-{
-    id: 5,
-    username: 'owenlarson5',
-    name: 'Owen Larson',
-    course: 'Finkbine Golf Course',
-    scores: [2, 4, 3, 5, 4, 3, 6, 5, 4],
-    description: 'Played 9 at fink',
-}]
+const blogs = [];
+
+const getBlogs = async () => {
+    let allBlogs = [];
+    let lastEvaluatedKey = null;
+
+    do {
+        const command = new ScanCommand({
+            TableName: 'Golf-Blog-Blogs',
+            ExclusiveStartKey: lastEvaluatedKey || undefined,
+        });
+
+        try {
+            const { Items, LastEvaluatedKey } = await dbclient.send(command);
+            if (Items && Array.isArray(Items)) {
+                allBlogs = allBlogs.concat(Items);
+            } else {
+                console.error("Items is not an array or is undefined.");
+            }
+        
+            lastEvaluatedKey = LastEvaluatedKey || null;
+        } catch (err) {
+            throw new Error("error scanning table: " + err.message);
+        }
+    } while (lastEvaluatedKey);
+
+    return allBlogs;
+}
 
 // GET BLOGS
-app.get('/api/blogs', (req, res) => {
-    return res.send(blogs);
+app.get('/api/blogs', async (req, res) => {
+    try {
+        const blogs = await getBlogs();
+        return res.json(blogs);
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
 });
 
 // GET SPECIFIC BLOG
@@ -276,6 +269,25 @@ function authenticateToken(req, res, next) {
 //     }
 // };
 // run();
+
+// const putBlogs = async () => {
+//     for (const blog of blogs) {
+//         blog.id = uuidv4();
+//         try {
+//             const command = new PutCommand({
+//                 TableName: "Golf-Blog-Blogs",
+//                 Item: blog
+//             });
+
+//             await dbclient.send(command);
+//             console.log(`Successfully inserted: ${JSON.stringify(blog)}`);
+//         } catch (error) {
+//             console.error("Error inserting item:", error);
+//         }
+//     }
+// }
+
+// putBlogs();
     
 const port = process.env.PORT || 8000;
     
