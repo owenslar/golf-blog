@@ -1,5 +1,5 @@
 <template>
-    <div class="card card-compact shadow-xl col-span-1 max-w-sm m-2 p-6 bg-white border gorder-gray-200 rounded-lg shadow-sm">
+    <div class="card card-compact shadow-xl col-span-1 max-w-sm m-1 p-6 bg-white border gorder-gray-200 rounded-lg shadow-sm">
         <div class="card-body">
             <h5 class="mb-2 text-2xl font-bold tracking-tight text-gray-900">{{ props.blog.name }} played a round!</h5>
             <h6 class="mb-2 text-2xl tracking-tight text-gray-700">{{ props.blog.course }}</h6>

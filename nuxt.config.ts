@@ -19,6 +19,12 @@ export default defineNuxtConfig({
     }
   },
 
+  nitro: {
+    externals: {
+      inline: ['@aws-sdk/client-dynamodb']
+    }
+  },
+
   runtimeConfig: {
     public: {
       apiBase: process.env.API_BASE || 'http://localhost:8000'

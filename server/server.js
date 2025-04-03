@@ -3,8 +3,19 @@ dotenv.config({ path: '../.env' });
 import express from 'express';
 import bodyParser from 'body-parser';
 import jwt from 'jsonwebtoken';
+import { DynamoDBClient, ListTablesCommand } from '@aws-sdk/client-dynamodb';
+import { DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
 
-    
+const dynamoDBClient = new DynamoDBClient({
+  region: 'us-west-2',
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
+  }
+});
+
+const dbclient = DynamoDBDocumentClient.from(dynamoDBClient);
+
 const app = express();
     
 app.use(bodyParser.json());
@@ -255,6 +266,16 @@ function authenticateToken(req, res, next) {
         next();
     })
 }
+
+// const run = async () => {
+//     try {
+//         const data = await dbclient.send(new ListTablesCommand({}));
+//         console.log("success, table list:", data.TableNames);
+//     } catch (err) {
+//         console.error("error", err);
+//     }
+// };
+// run();
     
 const port = process.env.PORT || 8000;
     
