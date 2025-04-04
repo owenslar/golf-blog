@@ -182,22 +182,49 @@ app.delete('/api/blogs/:id', authenticateToken, async (req, res) => {
     return res.sendStatus(200);
 })
 
+const queryRefreshToken = async (refreshToken) => {
+    try {
+        const command = new QueryCommand({
+            TableName: "Golf-Blog-RefreshTokens",
+            IndexName: "RefreshTokenIndex",
+            KeyConditionExpression: "refreshToken = :refreshToken",
+            ExpressionAttributeValues: {
+                ":refreshToken": refreshToken
+            }
+        });
+
+        const { Items } = await dbclient.send(command);
+        return Items;
+    } catch (error) {
+        throw new Error("Error querying RefreshToken: " + error.message);
+    }
+}
+
 // REFRESH AUTH TOKEN
-app.post('/api/token', (req, res) => {
+app.post('/api/token', async (req, res) => {
     const refreshToken = req.body.token;
-    if (refreshToken === null) {
-        return res.sendStatus(401);
+
+    if (!refreshToken) {
+        return res.status(401).json({ error: "Missing or invalid refresh token" });
     }
-    if (!refreshTokens.includes(refreshToken)) {
-        return res.sendStatus(403);
-    }
-    jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, (err, userData) => {
-        if (err) {
-            return res.sendStatus(403);
+    
+    try {
+        const tokens = await queryRefreshToken(refreshToken);
+        
+        if (tokens.length === 0) {
+            return res.status(403).json({ error: "Unauthorized, please log in again" });
         }
-        const authToken = generateAuthToken({ username: userData.username, password: userData.password })
-        return res.json({ authToken: authToken });
-    });
+        jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, (err, userData) => {
+            if (err) {
+                return res.sendStatus(403);
+            }
+            const authToken = generateAuthToken({ username: userData.username, password: userData.password });
+            return res.json({ authToken: authToken });
+        });
+
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
 });
 
 const deleteRefreshTokens = async (username) => {
@@ -405,7 +432,7 @@ app.post('/api/login', async (req, res) => {
 
 function generateAuthToken(userData) {
     // EDIT THE 15s TO SOMETHING BIGGER THIS IS JUST FOR TESTING
-    return jwt.sign({ username: userData.username }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' })
+    return jwt.sign({ username: userData.username }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '15m' })
 }
 
 function authenticateToken(req, res, next) {
@@ -422,35 +449,6 @@ function authenticateToken(req, res, next) {
         next();
     })
 }
-
-// const run = async () => {
-//     try {
-//         const data = await dbclient.send(new ListTablesCommand({}));
-//         console.log("success, table list:", data.TableNames);
-//     } catch (err) {
-//         console.error("error", err);
-//     }
-// };
-// run();
-
-// const putBlogs = async () => {
-//     for (const blog of blogs) {
-//         blog.id = uuidv4();
-//         try {
-//             const command = new PutCommand({
-//                 TableName: "Golf-Blog-Blogs",
-//                 Item: blog
-//             });
-
-//             await dbclient.send(command);
-//             console.log(`Successfully inserted: ${JSON.stringify(blog)}`);
-//         } catch (error) {
-//             console.error("Error inserting item:", error);
-//         }
-//     }
-// }
-
-// putBlogs();
     
 const port = process.env.PORT || 8000;
     
