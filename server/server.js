@@ -4,7 +4,7 @@ import express from 'express';
 import bodyParser from 'body-parser';
 import jwt from 'jsonwebtoken';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, ScanCommand, GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBDocumentClient, ScanCommand, GetCommand, PutCommand, DeleteCommand } from "@aws-sdk/lib-dynamodb";
 import { v4 as uuidv4 } from 'uuid';
 
 const dynamoDBClient = new DynamoDBClient({
@@ -138,23 +138,46 @@ app.post('/api/blogs', authenticateToken, async (req, res) => {
     }
 });
 
+const deleteBlog = async (blogId) => {
+    try {
+        const command = new DeleteCommand({
+            TableName: "Golf-Blog-Blogs",
+            Key: {
+                id: blogId,
+            }
+        });
+
+        await dbclient.send(command);
+
+    } catch (error) {
+        throw new Error("Error deleting blog: " + error.message);
+    }
+}
+
 // DELETE A BLOG
 // modify this to actually delete within the DB
-app.delete('/api/blogs/:id', authenticateToken, (req, res) => {
-    const deleteId = parseInt(req.params.id);
+app.delete('/api/blogs/:id', authenticateToken, async (req, res) => {
+    const deleteId = req.params.id;
     const userData = req.userData;
     if (!deleteId) {
         return res.status(400).json({ error: 'No ID provided' });
     }
-    const index = blogs.findIndex(obj => obj.id === deleteId);
-    if (blogs[index].username !== userData.username) {
+    const blog = await getBlog(deleteId);
+    if (!blog) {
+        return res.status(400).json({ error: "blog not found" });
+    }
+    if (blog.username !== userData.username) {
         return res.status(403).json({ error: 'This blog is not yours' });
     }
-    if (index > -1) {
-        blogs.splice(index, 1);
-    } else {
-        return res.send(404).json({ error: 'Blog not found' });
+    
+    try {
+        await deleteBlog(deleteId);
+        console.log(`Successfully deleted blog: ${JSON.stringify(blog)}`);
+    } catch (error) {
+        console.log("error deleting blog");
+        return res.status(500).json({ error: error.message });
     }
+
     return res.sendStatus(200);
 })
 
