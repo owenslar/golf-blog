@@ -15,6 +15,7 @@
     "@nuxtjs/proxy": "^2.1.0",
     "@nuxtjs/tailwindcss": "^6.13.2",
     "axios": "^1.8.4",
+    "bcrypt": "^5.1.1",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "jsonwebtoken": "^9.0.2",

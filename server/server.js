@@ -6,6 +6,7 @@ import jwt from 'jsonwebtoken';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, ScanCommand, GetCommand, PutCommand, DeleteCommand } from "@aws-sdk/lib-dynamodb";
 import { v4 as uuidv4 } from 'uuid';
+import bcrypt from 'bcrypt';
 
 const dynamoDBClient = new DynamoDBClient({
   region: 'us-west-2',
@@ -194,7 +195,7 @@ app.post('/api/token', (req, res) => {
         if (err) {
             return res.sendStatus(403);
         }
-        const authToken = generateAuthToken({ id: userData.id, username: userData.username, password: userData.password })
+        const authToken = generateAuthToken({ username: userData.username, password: userData.password })
         return res.json({ authToken: authToken });
     });
 });
@@ -234,9 +235,58 @@ function extractUserData(refreshToken) {
     }
 }
 
+const getUser = async (username) => {
+    try {
+        const command = new GetCommand({
+            TableName: "Golf-Blog-Users",
+            Key: {
+                username: username,
+            },
+        });
+
+        return await dbclient.send(command);
+    } catch (error) {
+        throw new Error("Error retrieving user: " + error.message);
+    }
+}
+
+const addUser = async (userData) => {
+    try {
+
+        const hashedPassword = await bcrypt.hash(userData.password, 10);
+        userData.password = hashedPassword;
+
+        const command = new PutCommand({
+            TableName: "Golf-Blog-Users",
+            Item: userData,
+        });
+
+        await dbclient.send(command);
+    } catch (error) {
+        throw new Error("Error adding user: " + error.message);
+    }
+}
+
+const addRefreshToken = async (username, refreshToken) => {
+    try {
+        const command = new PutCommand({
+            TableName: "Golf-Blog-RefreshTokens",
+            Item: { username: username, refreshToken: refreshToken },
+        });
+
+        await dbclient.send(command);
+    } catch (error) {
+        throw new Error("Error adding refreshToken: " + error.message);
+    }
+}
+
+const checkPassword = async (enteredPassword, storedPassword) => {
+    return await bcrypt.compare(enteredPassword, storedPassword);
+}
+
 
 // REGISTER USER (returns new authtoken and refreshtoken)
-app.post('/api/register', (req, res) => {
+app.post('/api/register', async (req, res) => {
     const userData = req.body;
     if (!userData) {
         return res.status(400).json({ error: 'Invalid data recieved' });
@@ -248,26 +298,29 @@ app.post('/api/register', (req, res) => {
         return res.status(400).json({ error: "Bad request, invalid password" });
     }
 
-    // HERE YOU NEED TO CHECK IF THE USER ALREADY EXISTS BEFORE CREATING THEM, AND THE DB SHOULD GENERATE AN ID SOMEHOW
-    
-    const containsUser = users.some(user => {
-        return user.username === userData.username;
-    })
 
-    if (containsUser) {
-        return res.status(403).json({ error: "Already taken" });
+    // Check if user already exists, add them if not, generate and add refreshToken and authToken    
+    try {
+        const { Item } = await getUser(userData.username);
+        
+        if (Item) {
+            return res.status(409).json({ error: "Username already taken" });
+        }
+    
+        await addUser(userData);
+    
+        const authToken = generateAuthToken(userData);
+        const refreshToken = jwt.sign({ username: userData.username }, process.env.REFRESH_TOKEN_SECRET);
+    
+        // THIS SHOULD BE REPLACED BY PUTTING THE REFRESH TOKEN IN THE DATABASE
+        await addRefreshToken(userData.username, refreshToken);
+    
+        return res.json({ authToken: authToken, refreshToken: refreshToken });
+
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
     }
 
-    userData.id = users.length + 1;
-    users.push(userData);
-
-    const authToken = generateAuthToken(userData);
-    const refreshToken = jwt.sign(userData, process.env.REFRESH_TOKEN_SECRET);
-
-    // THIS SHOULD BE REPLACED BY PUTTING THE REFRESH TOKEN IN THE DATABASE
-    refreshTokens.push(refreshToken);
-
-    return res.json({ authToken: authToken, refreshToken: refreshToken });
 });
 
 // TEMPORARY ENDPOINT FOR TESTING
@@ -276,7 +329,7 @@ app.get('/api/test', authenticateToken, (req, res) => {
 })
 
 // LOGIN USER (returns a new authtoken and refreshtoken)
-app.post('/api/login', (req, res) => {
+app.post('/api/login', async (req, res) => {
     const reqUserData = req.body;
     
     if (!reqUserData) {
@@ -291,28 +344,37 @@ app.post('/api/login', (req, res) => {
 
 
     // AUTHENTICATE USER (check their username and password against DB)
-    // ALSO FETCH THIS USER DATA FROM THE DATABASE TO USE FOR THE LINES BELOW (should have a username, password, and id)
-    const user = users.find(user => user.username === reqUserData.username);
-    if (!user) {
-        return res.status(403).json({ error: "Unauthorized, user doesn't exist" });
+    // ALSO FETCH THIS USER DATA FROM THE DATABASE TO USE FOR THE LINES BELOW (should have a username and password)
+    try {
+
+        const { Item } = await getUser(reqUserData.username);
+
+        if (!Item) {
+            return res.status(403).json({ error: "Unauthorized, user doesn't exist" });
+        }
+
+        const isPasswordValid = await checkPassword(reqUserData.password, Item.password);
+
+        if (!isPasswordValid) {
+            return res.status(403).json({ error: "Unauthroized, incorrect password"});
+        }
+        const userData = Item;
+    
+        const authToken = generateAuthToken(userData);
+        const refreshToken = jwt.sign({ username: userData.username }, process.env.REFRESH_TOKEN_SECRET);
+    
+        await addRefreshToken(userData.username, refreshToken);
+    
+        return res.json({ authToken: authToken, refreshToken: refreshToken });
+
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
     }
-    if (user.password !== reqUserData.password) {
-        return res.status(403).json({ error: "Unauthroized, incorrect password"});
-    }
-    const userData = user;
-
-    const authToken = generateAuthToken(userData);
-    const refreshToken = jwt.sign(userData, process.env.REFRESH_TOKEN_SECRET);
-
-    // THIS SHOULD BE REPLACED BY PUTTING THE REFRESH TOKEN IN THE DATABASE
-    refreshTokens.push(refreshToken);
-
-    return res.json({ authToken: authToken, refreshToken: refreshToken });
 });
 
 function generateAuthToken(userData) {
     // EDIT THE 15s TO SOMETHING BIGGER THIS IS JUST FOR TESTING
-    return jwt.sign(userData, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' })
+    return jwt.sign({ username: userData.username }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' })
 }
 
 function authenticateToken(req, res, next) {
