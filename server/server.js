@@ -47,7 +47,11 @@ const getBlogs = async () => {
             throw new Error("error scanning table: " + err.message);
         }
     } while (lastEvaluatedKey);
-
+    allBlogs.sort((a, b) => {
+        if (!a.date) return 1;
+        if (!b.date) return -1;
+        return new Date(b.date) - new Date(a.date);
+    });
     return allBlogs;
 }
 
@@ -121,6 +125,7 @@ app.post('/api/blogs', authenticateToken, async (req, res) => {
     }
     blogData.id = uuidv4();
     blogData.username = req.userData.username;
+    blogData.date = Date.now();
     try {
         await addBlog(blogData);
         return res.sendStatus(200);

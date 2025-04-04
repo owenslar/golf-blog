@@ -13,7 +13,11 @@
                 <div v-else-if="blog.username === ''" class="mt-1 ml-4 text-lg">N/A</div>
                 <div v-else class="mt-1 ml-4 text-lg">loading username...</div>
             </div>
-            <br>
+            <div class="flex flex-row">
+                <div class="mt-1 ml-4 text-lg font-bold">Logged on:</div>
+                <div v-if="formattedDate" class="mt-1 ml-4 text-lg">{{ formattedDate }}</div>
+                <div v-else class="mt-1 ml-4 text-lg">loading username...</div>
+            </div>
             <div class="flex flex-row">
                 <div class="mt-4 ml-4 mr-1 text-2xl font-bold">Course: </div>
                 <div v-if="blog.course"class="m-4 text-2xl">{{ blog.course }}</div>
@@ -82,6 +86,14 @@
             blog.value = null;
         }
     });
+
+    const formattedDate = computed(() => {
+        if (!blog.value.date) {
+            return 'Unknown Date';
+        }
+        const rawDate = new Date(blog.value.date);
+        return rawDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    })
 </script>
 
 <style scoped>
