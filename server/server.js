@@ -23,15 +23,7 @@ const app = express();
 app.use(bodyParser.json());
 app.use(express.json());
 
-// THE ARRAYS BELOW ARE TEMPORARY DATA THAT NEED TO BE STORED IN A DATABASE IN THE FUTURE
-// FOR NOW THEY ARE USED TO TEST THE ENDPONITS
-
-const users = [];
-
-let refreshTokens = [];
-
-const blogs = [];
-
+// Data access method for getting all blogs
 const getBlogs = async () => {
     let allBlogs = [];
     let lastEvaluatedKey = null;
@@ -59,7 +51,7 @@ const getBlogs = async () => {
     return allBlogs;
 }
 
-// GET BLOGS
+// GET BLOGS ENDPOINT
 app.get('/api/blogs', async (req, res) => {
     try {
         const blogs = await getBlogs();
@@ -69,6 +61,7 @@ app.get('/api/blogs', async (req, res) => {
     }
 });
 
+// Data access method for getting a specific blog
 const getBlog = async (partitionKey) => {
     try {
         const command = new GetCommand({
@@ -81,10 +74,8 @@ const getBlog = async (partitionKey) => {
         const { Item } = await dbclient.send(command);
 
         if (Item) {
-            console.log("Item retrieved");
             return Item;
         } else {
-            console.log("Item not found");
             return null;
         }
     } catch (error) {
@@ -92,7 +83,7 @@ const getBlog = async (partitionKey) => {
     }
 }
 
-// GET SPECIFIC BLOG
+// GET SPECIFIC BLOG ENDPOINT
 app.get('/api/blogs/:id', async (req, res) => {
     const id = req.params.id;
     try {
@@ -108,6 +99,7 @@ app.get('/api/blogs/:id', async (req, res) => {
     
 });
 
+// Data access method for adding a blog
 const addBlog = async (blogData) => {
     try {
         const command = new PutCommand({
@@ -116,14 +108,12 @@ const addBlog = async (blogData) => {
         });
 
         await dbclient.send(command);
-        console.log(`Successfully inserted blog: ${JSON.stringify(blogData)}`);
     } catch (error) {
-        console.log("ERROR ADDING BLOG");
         throw new Error("Error adding blog: " + error.message);
     }
 }
 
-// CREATE A BLOG
+// CREATE A BLOG ENDPOINT
 app.post('/api/blogs', authenticateToken, async (req, res) => {
     const blogData = req.body;
     if (!blogData) {
@@ -139,6 +129,7 @@ app.post('/api/blogs', authenticateToken, async (req, res) => {
     }
 });
 
+// Data access method for deleting a blog
 const deleteBlog = async (blogId) => {
     try {
         const command = new DeleteCommand({
@@ -155,8 +146,7 @@ const deleteBlog = async (blogId) => {
     }
 }
 
-// DELETE A BLOG
-// modify this to actually delete within the DB
+// DELETE A BLOG ENDPOINT
 app.delete('/api/blogs/:id', authenticateToken, async (req, res) => {
     const deleteId = req.params.id;
     const userData = req.userData;
@@ -173,15 +163,14 @@ app.delete('/api/blogs/:id', authenticateToken, async (req, res) => {
     
     try {
         await deleteBlog(deleteId);
-        console.log(`Successfully deleted blog: ${JSON.stringify(blog)}`);
     } catch (error) {
-        console.log("error deleting blog");
         return res.status(500).json({ error: error.message });
     }
 
     return res.sendStatus(200);
 })
 
+// Data access method for checking if a refresh token exists in DB
 const queryRefreshToken = async (refreshToken) => {
     try {
         const command = new QueryCommand({
@@ -200,7 +189,7 @@ const queryRefreshToken = async (refreshToken) => {
     }
 }
 
-// REFRESH AUTH TOKEN
+// REFRESH AUTH TOKEN ENDPOINT
 app.post('/api/token', async (req, res) => {
     const refreshToken = req.body.token;
 
@@ -227,6 +216,7 @@ app.post('/api/token', async (req, res) => {
     }
 });
 
+// Data access method for deleting all refresh tokens associated with a username
 const deleteRefreshTokens = async (username) => {
     try {
         const command = new QueryCommand({
@@ -261,7 +251,7 @@ const deleteRefreshTokens = async (username) => {
     }
 }
 
-// DELETE REFRESH TOKENS
+// DELETE REFRESH TOKENS ENDPOINT
 app.delete('/api/logout', async (req, res) => {
     const authHeader = req.headers['authorization'];
 
@@ -275,8 +265,7 @@ app.delete('/api/logout', async (req, res) => {
             return res.sendStatus(200);
         }
     
-        const response = await deleteRefreshTokens(userData.username);
-        console.log(response);
+        await deleteRefreshTokens(userData.username);
     
         return res.sendStatus(204);
 
@@ -285,6 +274,7 @@ app.delete('/api/logout', async (req, res) => {
     }
 });
 
+// Helper function for extracting username from a refreshToken
 function extractUserData(refreshToken) {
     try {
         return jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
@@ -293,6 +283,8 @@ function extractUserData(refreshToken) {
     }
 }
 
+
+// Data access method for getting a single user from database
 const getUser = async (username) => {
     try {
         const command = new GetCommand({
@@ -308,6 +300,7 @@ const getUser = async (username) => {
     }
 }
 
+// Data access method for adding a single user to database
 const addUser = async (userData) => {
     try {
 
@@ -325,6 +318,8 @@ const addUser = async (userData) => {
     }
 }
 
+
+// Data access method for adding a single refreshToken
 const addRefreshToken = async (username, refreshToken) => {
     try {
         const command = new PutCommand({
@@ -338,12 +333,13 @@ const addRefreshToken = async (username, refreshToken) => {
     }
 }
 
+// Helper function for comparing salted and hashed passwords
 const checkPassword = async (enteredPassword, storedPassword) => {
     return await bcrypt.compare(enteredPassword, storedPassword);
 }
 
 
-// REGISTER USER (returns new authtoken and refreshtoken)
+// REGISTER USER ENDPOINT (returns an authToken and a refreshToken)
 app.post('/api/register', async (req, res) => {
     const userData = req.body;
     if (!userData) {
@@ -370,7 +366,6 @@ app.post('/api/register', async (req, res) => {
         const authToken = generateAuthToken(userData);
         const refreshToken = jwt.sign({ username: userData.username }, process.env.REFRESH_TOKEN_SECRET);
     
-        // THIS SHOULD BE REPLACED BY PUTTING THE REFRESH TOKEN IN THE DATABASE
         await addRefreshToken(userData.username, refreshToken);
     
         return res.json({ authToken: authToken, refreshToken: refreshToken });
@@ -381,12 +376,8 @@ app.post('/api/register', async (req, res) => {
 
 });
 
-// TEMPORARY ENDPOINT FOR TESTING (REMEMBER TO DELETE THIS)
-app.get('/api/test', authenticateToken, (req, res) => {
-    return res.json(refreshTokens);
-})
 
-// LOGIN USER (returns a new authtoken and refreshtoken)
+// LOGIN USER ENDPOINT (returns a new authtoken and refreshtoken)
 app.post('/api/login', async (req, res) => {
     const reqUserData = req.body;
     
@@ -400,9 +391,6 @@ app.post('/api/login', async (req, res) => {
         return res.status(400).json({ error: "Bad request, invalid password" });
     }
 
-
-    // AUTHENTICATE USER (check their username and password against DB)
-    // ALSO FETCH THIS USER DATA FROM THE DATABASE TO USE FOR THE LINES BELOW (should have a username and password)
     try {
 
         const { Item } = await getUser(reqUserData.username);
@@ -430,11 +418,12 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
+// Helper function for generating an authToken
 function generateAuthToken(userData) {
-    // EDIT THE 15s TO SOMETHING BIGGER THIS IS JUST FOR TESTING
     return jwt.sign({ username: userData.username }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '15m' })
 }
 
+// Middleware function for authenticating the token in the request
 function authenticateToken(req, res, next) {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
