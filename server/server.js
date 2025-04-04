@@ -4,8 +4,8 @@ import express from 'express';
 import bodyParser from 'body-parser';
 import jwt from 'jsonwebtoken';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, ScanCommand } from "@aws-sdk/lib-dynamodb";
-// import { v4 as uuidv4 } from 'uuid';
+import { DynamoDBDocumentClient, ScanCommand, GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
+import { v4 as uuidv4 } from 'uuid';
 
 const dynamoDBClient = new DynamoDBClient({
   region: 'us-west-2',
@@ -68,27 +68,74 @@ app.get('/api/blogs', async (req, res) => {
     }
 });
 
-// GET SPECIFIC BLOG
-app.get('/api/blogs/:id', (req, res) => {
-    const id = req.params.id;
-    const foundBlog = blogs.find((blog) => blog.id === parseInt(id));
-    
-    if (!foundBlog) {
-        return res.status(404).send({ message: 'Blog not found' });
+const getBlog = async (partitionKey) => {
+    try {
+        const command = new GetCommand({
+            TableName: "Golf-Blog-Blogs",
+            Key: {
+                id: partitionKey,
+            },
+        });
+
+        const { Item } = await dbclient.send(command);
+
+        if (Item) {
+            console.log("Item retrieved");
+            return Item;
+        } else {
+            console.log("Item not found");
+            return null;
+        }
+    } catch (error) {
+        throw new Error("error retrieving blog: " + error.message);
     }
-    return res.send(foundBlog); 
+}
+
+// GET SPECIFIC BLOG
+app.get('/api/blogs/:id', async (req, res) => {
+    const id = req.params.id;
+    try {
+        const foundBlog = await getBlog(id);
+
+        if (!foundBlog) {
+            return res.status(404).send({ message: 'Blog not found' });
+        }
+        return res.json(foundBlog);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+    
 });
 
+const addBlog = async (blogData) => {
+    try {
+        const command = new PutCommand({
+            TableName: "Golf-Blog-Blogs",
+            Item: blogData,
+        });
+
+        await dbclient.send(command);
+        console.log(`Successfully inserted blog: ${JSON.stringify(blogData)}`);
+    } catch (error) {
+        console.log("ERROR ADDING BLOG");
+        throw new Error("Error adding blog: " + error.message);
+    }
+}
+
 // CREATE A BLOG
-app.post('/api/blogs', authenticateToken, (req, res) => {
+app.post('/api/blogs', authenticateToken, async (req, res) => {
     const blogData = req.body;
     if (!blogData) {
         return res.status(400).json({ error: 'Invalid data recieved' });
     }
-    blogData.id = blogs.length + 1;
+    blogData.id = uuidv4();
     blogData.username = req.userData.username;
-    blogs.push(blogData);
-    return res.sendStatus(200);
+    try {
+        await addBlog(blogData);
+        return res.sendStatus(200);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
 });
 
 // DELETE A BLOG
