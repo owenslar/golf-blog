@@ -4,7 +4,7 @@ import express from 'express';
 import bodyParser from 'body-parser';
 import jwt from 'jsonwebtoken';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, ScanCommand, GetCommand, PutCommand, DeleteCommand } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBDocumentClient, ScanCommand, GetCommand, PutCommand, DeleteCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
 import { v4 as uuidv4 } from 'uuid';
 import bcrypt from 'bcrypt';
 
@@ -200,9 +200,42 @@ app.post('/api/token', (req, res) => {
     });
 });
 
-// DELETE REFRESH TOKEN
-// MODIFY THIS ENDPOINT TO ACTUALLY DELETE THE REFRESH TOKEN FROM THE DB
-app.delete('/api/logout', (req, res) => {
+const deleteRefreshTokens = async (username) => {
+    try {
+        const command = new QueryCommand({
+            TableName: "Golf-Blog-RefreshTokens",
+            KeyConditionExpression: "username = :username",
+            ExpressionAttributeValues: {
+                ":username": username,
+            }
+        });
+
+        const { Items } = await dbclient.send(command);
+
+        if (Items.length === 0) {
+            return { message: "No refresh tokens found for user." };
+        }
+
+        for (let item of Items) {
+            const deleteCommand = new DeleteCommand({
+                TableName: "Golf-Blog-RefreshTokens",
+                Key: {
+                    username: item.username,
+                    refreshToken: item.refreshToken,
+                }
+            });
+
+            await dbclient.send(deleteCommand);
+        }
+
+        return { message: "All refresh tokens deleted successfully" };
+    } catch (error) {
+        throw new Error("Error deleting refresh tokens: " + error.message);
+    }
+}
+
+// DELETE REFRESH TOKENS
+app.delete('/api/logout', async (req, res) => {
     const authHeader = req.headers['authorization'];
 
     const token = authHeader && authHeader.split(' ')[1];
@@ -215,15 +248,13 @@ app.delete('/api/logout', (req, res) => {
             return res.sendStatus(200);
         }
     
-        refreshTokens = refreshTokens.filter(t => {
-            const extractedUser = extractUserData(t);
-            return extractedUser && extractedUser.username !== userData.username;
-        });
+        const response = await deleteRefreshTokens(userData.username);
+        console.log(response);
     
         return res.sendStatus(204);
 
     } catch (err) {
-        return res.sendStatus(403);
+        return res.status(500).json({ error: err.message });
     }
 });
 
@@ -323,7 +354,7 @@ app.post('/api/register', async (req, res) => {
 
 });
 
-// TEMPORARY ENDPOINT FOR TESTING
+// TEMPORARY ENDPOINT FOR TESTING (REMEMBER TO DELETE THIS)
 app.get('/api/test', authenticateToken, (req, res) => {
     return res.json(refreshTokens);
 })
