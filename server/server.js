@@ -1,4 +1,5 @@
 import dotenv from 'dotenv';
+// import 'ts-node/register';
 dotenv.config({ path: '../.env' });
 import express from 'express';
 import bodyParser from 'body-parser';
@@ -7,21 +8,96 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, ScanCommand, GetCommand, PutCommand, DeleteCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
 import { v4 as uuidv4 } from 'uuid';
 import bcrypt from 'bcrypt';
+import { createProxyMiddleware } from 'http-proxy-middleware';
+// import config from '#config';
+// import { Nuxt, Builder } from 'nuxt';
+// import pkg from 'nuxt3';
+// const { createApp } = pkg;
+// import { dirname, resolve } from 'path';
+// import { fileURLToPath } from 'url';
+// import { fileURLToPath } from 'url';
+// import { createNuxt, loadNuxt } from 'nuxt';
+// import config from '../nuxt.config.js';
+// import { default as nitroApp } from '../.output/server/index.mjs';
+
+// (async () => {
+//     // Dynamically import the nuxt.config.ts file
+//     const config = await import('../nuxt.config.ts');
+//     console.log(config.default); // Log the exported config object
+//   })();
+
+// let backendUrl = process.env.BACKEND_URL;
+// if (!backendUrl) {
+//     console.error('Error: BACKEND_URL is not set in environment variables.');
+//     // Optionally fallback to a default value for development:
+//     backendUrl = 'http://localhost:8000';
+// }
+
 
 const dynamoDBClient = new DynamoDBClient({
-  region: 'us-west-2',
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
-  }
+    region: 'us-west-2',
+    credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
+    }
 });
 
 const dbclient = DynamoDBDocumentClient.from(dynamoDBClient);
 
 const app = express();
-    
+const port = process.env.PORT || 8000;
+
 app.use(bodyParser.json());
 app.use(express.json());
+
+
+
+const apiProxyMiddleware = createProxyMiddleware({
+    target: 'http://localhost:8000',
+    changeOrigin: true,
+});
+// const nuxtApp = createApp();
+
+// const __dirname = dirname(fileURLToPath(import.meta.url));
+
+// const nuxt = new Nuxt(config);
+
+// const { host, port } = nuxt.options.server;
+
+// await nuxt.ready();
+
+
+// const dev = process.env.NODE_ENV !== 'production';
+
+// if (dev) {
+//     const builder = new Builder(nuxt);
+//     await builder.build();
+// }
+
+// const __dirname = dirname(fileURLToPath(import.meta.url));
+
+// const nuxt = await loadNuxt({
+//     for: 'start',
+//     rootDir: __dirname,
+//     buildDir: '.nuxt',
+// });
+
+// if (process.env.NODE_ENV === 'production') {
+//     await nuxt.build();
+// }
+
+// app.use(express.static(resolve(__dirname, '../.output/public')));
+
+
+
+// const nuxt = new Nuxt({ ...config, dev });
+
+// if (dev) {
+//     const builder = new Builder(nuxt);
+//     builder.build();
+// }
+
+// app.use(nuxt.render);
 
 // Data access method for getting all blogs
 const getBlogs = async () => {
@@ -346,6 +422,7 @@ const checkPassword = async (enteredPassword, storedPassword) => {
 
 // REGISTER USER ENDPOINT (returns an authToken and a refreshToken)
 app.post('/api/register', async (req, res) => {
+    console.log("MADE IT INTO REGISTER");
     const userData = req.body;
     if (!userData) {
         return res.status(400).json({ error: 'Invalid data recieved' });
@@ -443,12 +520,50 @@ function authenticateToken(req, res, next) {
         next();
     })
 }
-    
-const port = process.env.PORT || 8000;
-    
+
+// app.listen(port, () => {
+//     console.log(`Express server listening on port ${port}`);
+// });
+
+
+// app.all('*', (req, res) => {
+//     console.log(nuxt);
+//     console.log(nuxt.render);
+//     nuxt.render(req, res);
+// })
+
+// app.use(nuxtApp);
+
+
 app.listen(port, () => {
-    console.log('Server listening on port ' + port);
+    console.log(`Server listening on port ${port}`);
+});
+
+// export default defineEventHandler(async (event) => {
+//     console.log(`Request Method: ${event.node.req.method}`);
+//     console.log(`Request URL: ${event.node.req.url}`);
+
+//     return new Promise((resolve, reject) => {
+//       app.handle(event.node.req, event.node.res, (err) => {
+//         if (err) {
+//             console.error("error in express handling:", err);
+//             reject(err);
+//         } else {
+//             resolve();
+//         }
+//       });
+//     });
+//   });
+
+export default eventHandler(async (req, res) => {
+    await new Promise((resolve, reject) => {
+        const next = (err) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve();
+            }
+        }
+        apiProxyMiddleware(req, res, next);
+    })
 })
-
-
-export default fromNodeMiddleware(app);
