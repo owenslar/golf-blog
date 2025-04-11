@@ -4,7 +4,7 @@
 
 <script setup>
     const props = defineProps(['num']);
-    const inputValue = null;
+    let inputValue = null;
     defineEmits(['customEvent']);
     const placeholderString = "  " + props.num;
 </script>

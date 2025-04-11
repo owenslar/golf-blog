@@ -10,20 +10,20 @@ export default defineNuxtConfig({
     transpile: ['tslib'],
   },
 
-  serverHandlers: [
-    { route: '/api', handler: '~/server/server.js'}
-  ],
+  // serverHandlers: [
+  //   { route: '/api', handler: '~/server/server.js'}
+  // ],
 
-  vite: {
-    server: {
-      proxy: {
-        '/api': {
-          target: 'http://localhost:8000',
-          changeOrigin: true
-        }
-      }
-    },
-  },
+  // vite: {
+  //   server: {
+  //     proxy: {
+  //       '/api': {
+  //         target: 'http://localhost:8000',
+  //         changeOrigin: true
+  //       }
+  //     }
+  //   },
+  // },
 
   nitro: {
     preset: 'node-server',

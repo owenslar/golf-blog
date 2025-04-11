@@ -30,7 +30,7 @@
             localStorage.setItem('refreshToken', response.data.refreshToken);
         } catch (error) {
             console.error('Failed to login:', error);
-            window.alert(error.response.data.error);
+            window.alert(error.response.data.message);
             return;
         }
         switchState();
@@ -45,7 +45,7 @@
             localStorage.setItem('refreshToken', response.data.refreshToken);
         } catch (error) {
             console.error('Failed to register:', error);
-            window.alert(error.response.data.error);
+            window.alert(error.response.data.message);
             return;
         }
         switchState();
@@ -62,7 +62,7 @@
             localStorage.clear();
         } catch (error) {
             console.error('Failed to logout', error);
-            window.alert(error.response.data.error);
+            window.alert(error.response.data.message);
             return;
         }
         switchState();

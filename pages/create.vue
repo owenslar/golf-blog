@@ -47,6 +47,7 @@
         methods: {
             async handleSubmit() {
                 if (this.formData.scores.includes(0)) {
+                    console.log(this.formData.scores);
                     window.alert("Please fill in all your scores");
                     return;
                 }
@@ -64,7 +65,7 @@
                 const jsonData = JSON.stringify(this.formData);
                 try {
                     const jwt = localStorage.getItem('authToken');
-                    if (!jwt) {
+                    if (!jwt || jwt === undefined) {
                         window.alert('Please log in before creating a blog');
                         return;
                     }
@@ -72,6 +73,7 @@
                     const isExpired = Date.now() >= jwtPayload.exp * 1000;
                     if (isExpired) {
                         const tokenResponse = await axios.post('/api/token', { 'token': `${localStorage.getItem('refreshToken')}`});
+                        console.log(tokenResponse);
                         localStorage.setItem('authToken', tokenResponse.data.authToken);
                     }
                     const response = await axios.post('/api/blogs', jsonData, {
@@ -81,7 +83,7 @@
                     });
                 } catch (error) {
                     console.error('Failed to add blog:', error);
-                    window.alert(error.response.data.error);
+                    window.alert(error.response.data.message);
                     return;
                 }
                 await navigateTo('/blogs');

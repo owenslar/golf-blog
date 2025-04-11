@@ -8,7 +8,7 @@
                 <div v-else class="mt-4 ml-4 mr-4 text-2xl">loading name...</div>
             </div>
             <div class="flex flex-row">
-                <div class="mt-1 ml-4 text-lg font-bold">username:</div>
+                <div class="mt-1 ml-4 text-lg font-bold">Username:</div>
                 <div v-if="blog.username" class="mt-1 ml-4 text-lg">{{ blog.username }}</div>
                 <div v-else-if="blog.username === ''" class="mt-1 ml-4 text-lg">N/A</div>
                 <div v-else class="mt-1 ml-4 text-lg">loading username...</div>
@@ -67,7 +67,7 @@
             });
         } catch (error) {
             console.error('Failed to delete blog: ', error);
-            window.alert(error.response.data.error);
+            window.alert(error.response.data.message);
             return;
         }
         await navigateTo('/blogs');
