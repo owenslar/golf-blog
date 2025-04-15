@@ -47,7 +47,6 @@
         methods: {
             async handleSubmit() {
                 if (this.formData.scores.includes(0)) {
-                    console.log(this.formData.scores);
                     window.alert("Please fill in all your scores");
                     return;
                 }
