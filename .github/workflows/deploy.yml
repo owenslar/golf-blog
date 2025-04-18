@@ -28,3 +28,16 @@ jobs:
         push: true
         tags: owenlarson/golf-blog-repository:owens-golf-blog-app
         platforms: linux/amd64
+
+    # - name: Update ECS service
+    #   uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+    #   with:
+    #     task-definition: ecs-task-def.json
+    #     service: golf-blog-main-service
+    #     cluster: golf-blog-cluster
+    #     wait-for-service-stability: true
+        # aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+    #     aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+    #     region: ${{ secrets.AWS_REGION }}
+
+    
