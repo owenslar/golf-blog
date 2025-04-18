@@ -1,0 +1,56 @@
+{
+    "family": "golf-blog-main-task",
+    "networkMode": "awsvpc",
+    "containerDefinitions": [
+      {
+        "name": "golf-blog-container",
+        "image": "owenlarson/golf-blog-repository:owens-golf-blog-app",
+        "cpu": 0,
+        "portMappings": [
+          {
+            "name": "container-port-protocol",
+            "containerPort": 3000,
+            "hostPort": 3000,
+            "protocol": "tcp",
+            "appProtocol": "http"
+          }
+        ],
+        "essential": true,
+        "environment": [],
+        "mountPoints": [],
+        "volumesFrom": [],
+        "secrets": [
+          {
+            "name": "REFRESH_TOKEN_SECRET",
+            "valueFrom": "arn:aws:secretsmanager:us-west-2:636428917918:secret:golf-blog-REFRESH_TOKEN_SECRET-pu8Of1"
+          },
+          {
+            "name": "ACCESS_TOKEN_SECRET",
+            "valueFrom": "arn:aws:secretsmanager:us-west-2:636428917918:secret:golf-blog-ACCESS_TOKEN_SECRET-Y9LJxX"
+          }
+        ],
+        "logConfiguration": {
+          "logDriver": "awslogs",
+          "options": {
+            "awslogs-group": "/ecs/golf-blog-main-task",
+            "mode": "non-blocking",
+            "awslogs-create-group": "true",
+            "max-buffer-size": "25m",
+            "awslogs-region": "us-west-2",
+            "awslogs-stream-prefix": "ecs"
+          }
+        },
+        "systemControls": []
+      }
+    ],
+    "taskRoleArn": "arn:aws:iam::636428917918:role/AmazonECSTaskDynamoDBRole",
+    "executionRoleArn": "arn:aws:iam::636428917918:role/ecsTaskExecutionRole",
+    "requiresCompatibilities": ["FARGATE"],
+    "cpu": "512",
+    "memory": "1024",
+    "runtimePlatform": {
+      "cpuArchitecture": "X86_64",
+      "operatingSystemFamily": "LINUX"
+    }
+  }
+  
